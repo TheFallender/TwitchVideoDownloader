@@ -1,0 +1,7 @@
+/__pycache__/
+/reqenv/
+/dist/
+/build/
+/releases/
+*.spec
+config.ini
