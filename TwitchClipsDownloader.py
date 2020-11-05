@@ -2,7 +2,7 @@
 #                                                IMPORTS
 #------------------------------------------------------------------------------------------------------
 
-from os import getcwd, system, path, name
+import os
 import sys
 from time import sleep
 import re
@@ -19,15 +19,15 @@ from youtube_dl import YoutubeDL
 
 # Clear console
 def clear (): 
-    if name == 'nt': 
-        _ = system('cls') 
+    if os.name == 'nt': 
+        _ = os.system('cls') 
     else: 
-        _ = system('clear') 
+        _ = os.system('clear') 
 
 
 # Get the default download path
 def get_download_path ():
-    if name == 'nt':
+    if os.name == 'nt':
         import winreg
         sub_key = r'SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders'
         downloads_guid = '{374DE290-123F-4565-9164-39C4925E467B}'
@@ -35,7 +35,7 @@ def get_download_path ():
             location = winreg.QueryValueEx(key, downloads_guid)[0]
         return location
     else:
-        return path.join(path.expanduser('~'), 'Downloads')
+        return os.path.join(path.expanduser('~'), 'Downloads')
 
 
 # Get the elements on the page
@@ -45,8 +45,8 @@ def getElements ():
 
 # Get the resource path bundled
 def resource_path (relative_path):
-    base_path = getattr(sys, '_MEIPASS', path.dirname(path.abspath(__file__)))
-    return path.join(base_path, relative_path)
+    base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base_path, relative_path)
 
 
 #------------------------------------------------------------------------------------------------------
@@ -67,7 +67,7 @@ def StartBrowserSetup ():
 
     # Try to get the browser
     try:    # Debug Mode
-        chromeBrowser = webdriver.Chrome(executable_path = getcwd() + r'ChromeDrivers\\chromedriver.exe', options = chromeOptions)
+        chromeBrowser = webdriver.Chrome(executable_path = os.getcwd() + r'ChromeDrivers\\chromedriver.exe', options = chromeOptions)
     except: # Release Mode
         chromeBrowser = webdriver.Chrome(executable_path = resource_path(r'ChromeDrivers\\chromedriver.exe'), options = chromeOptions)
 
@@ -114,6 +114,7 @@ def IntroSetup ():
         # Format the URL
         browserURL = f'twitch.tv/{username}/clips?filter=clips&range={range}'
     else:
+        browser.close()
         sys.exit(0)
 
     # Clips to get
@@ -138,6 +139,7 @@ def ParseURL2Folders (urlToUse: str):
         folderStructure += parsedURL['filter'][0] + "\\"                             # Filter folder (clips, videos, broadcasts)
     else:
         print("You need to enter a filter.")
+        browser.close()
         sys.exit(0)
     if 'range' in parsedURL:
         folderStructure += parsedURL['range'][0] + "\\"                              # Sort folder
