@@ -2,16 +2,25 @@
 #                                                IMPORTS
 #------------------------------------------------------------------------------------------------------
 
+# System libraries
 import os
 import sys
 from time import sleep
-import re
+
+# Nerodia Browser
 from nerodia.browser import Browser
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options as webDriverOptions
-import urllib.parse as urlparse
+
+# Selenium Drivers
+import selenium.webdriver as drivers
+from selenium.webdriver.chrome.service import Service as webService
+
+# Youtube Downloader
 from youtube_dl import YoutubeDL
 
+# Extra libraries
+import urllib.parse as urlparse
+import datetime
+import re
 
 #------------------------------------------------------------------------------------------------------
 #                                                METHODS
@@ -40,7 +49,7 @@ def get_download_path ():
 
 # Get the elements on the page
 def getElements ():
-    return browser.elements(css='.tw-hover-accent-effect__children > .tw-link.tw-interactive')
+    return browser.elements(css='.tw-link[data-a-target="preview-card-image-link"]')
 
 
 # Get the resource path bundled
@@ -61,21 +70,28 @@ browser = None
 # Get the Browser
 def StartBrowserSetup ():
     # Browser defautls
-    chromeOptions = webDriverOptions()          # Initialize options
-    chromeOptions.add_argument('--headless')    # No pop-up window
-    chromeOptions.add_argument("--mute-audio")  # No audio (thx god)
-
-    # Try to get the browser
-    try:    # Debug Mode
-        chromeBrowser = webdriver.Chrome(executable_path = os.getcwd() + r'ChromeDrivers\\chromedriver.exe', options = chromeOptions)
-    except: # Release Mode
-        chromeBrowser = webdriver.Chrome(executable_path = resource_path(r'ChromeDrivers\\chromedriver.exe'), options = chromeOptions)
+    webOptions = drivers.ChromeOptions()   # Initialize options
+    webOptions.add_argument('--headless')    # No pop-up window
+    webOptions.add_argument("--mute-audio")  # No audio (thx god)
+    webOptions.add_argument("--log-level=3") # No logs
+    
+    executablePath = ""
+    # Set the path to the chromedriver
+    if os.path.isdir(os.getcwd() + r'ChromeDrivers'):
+        executablePath = os.getcwd() + r'ChromeDrivers\\chromedriver.exe'
+    else:
+        executablePath = resource_path(r'ChromeDrivers\\chromedriver.exe')
 
     # Clean mess
-    clear()
+    #clear()
 
     # Open browser
-    return Browser(chromeBrowser)
+    return Browser(
+        drivers.Chrome(
+            service=webService(executablePath),
+            options=webOptions
+        )
+    )
 
 # Intro of the system (gets the url)
 def IntroSetup ():
@@ -142,6 +158,10 @@ def ParseURL2Folders (urlToUse: str):
         browser.close()
         sys.exit(0)
     if 'range' in parsedURL:
+        # Get current date and format it as yyyy-mm-dd
+        currentDate = datetime.datetime.now()
+        currentDate = currentDate.strftime("%Y-%m-%d")
+        folderStructure += currentDate + "\\"                                        # Date folder
         folderStructure += parsedURL['range'][0] + "\\"                              # Sort folder
 
     return folderStructure
@@ -163,14 +183,15 @@ def SearchAndDownload ():
 
         # URL
         urlVid = elements[i].attribute_value('href')
+        urlVid = re.match(".*(?=\?)", urlVid).group(0)
 
         # Get info of the vid and make the filename
-        info = YoutubeDL().extract_info(url=urlVid, download=False)
+        info = YoutubeDL({'quiet': True}).extract_info(url=urlVid, download=False)
 
         # Print the links
         print(
             f"\n{i + 1}. {info['title']}\n" +
-            f"\tURL: {urlVid}"
+            f"  URL: {urlVid}"
         )
 
         # Get the output file
@@ -180,11 +201,36 @@ def SearchAndDownload ():
         YoutubeDL({
             'format': 'best',
             'outtmpl': folderStructure + fileName,
-        }).download([urlVid])
+            'logger': CustomLogger(),
+            'progress_hooks': [customHook],
+        }).download(
+            [urlVid]
+        )
 
         # Increase the index
         i += 1
 
+
+# Custom logger for Youtube-DL
+class CustomLogger(object):
+    def debug(self, msg):
+        if (msg.find("[download]") != -1):
+            print(msg)
+        pass
+
+    def warning(self, msg):
+        pass
+
+    def error(self, msg):
+        print(msg)
+
+
+# Custom Hook for Youtube-DL
+def customHook(d):
+    if d['status'] == 'finished':
+        print('Done downloading the video.\n')
+
+        
 #------------------------------------------------------------------------------------------------------
 #                                               MAIN PROGRAM
 #------------------------------------------------------------------------------------------------------
@@ -195,7 +241,7 @@ if __name__ == '__main__':
     browser = StartBrowserSetup()
 
     # Clear the screen
-    clear()
+    #clear()
 
     # Setup parameters
     browserURL = IntroSetup()
